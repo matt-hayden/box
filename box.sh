@@ -117,8 +117,11 @@ function execute-function () {
 
 function check-if-apt-cache-needs-update () {
   if [[ ! "$APT_CACHE_UP_TO_DATE" = "true" ]]; then
-    dpkg --get-selections | grep 'install$' | cut -f 1 > "$APT_INSTALL_CACHE"
+    dpkg-query -W -f='${Package}\n' > "$APT_INSTALL_CACHE"
+
+    set +e
     apt-get -s upgrade | grep '^Inst' | cut -d ' ' -f 2 > "$APT_UPGRADE_CACHE"
+    set -e
     APT_CACHE_UP_TO_DATE="true"
   fi
 }
@@ -128,9 +131,9 @@ function check-apt () {
 
   check-if-apt-cache-needs-update
 
-  if ! grep -E "^$PACKAGE$" < "$APT_INSTALL_CACHE" > /dev/null; then
+  if ! grep --line-regexp --fixed-strings "$PACKAGE" < "$APT_INSTALL_CACHE" > /dev/null; then
     BOX_STATUS=$BOX_STATUS_MISSING
-  elif grep -E "^$PACKAGE$" < "$APT_UPGRADE_CACHE" > /dev/null; then
+  elif grep --line-regexp --fixed-strings "$PACKAGE" < "$APT_UPGRADE_CACHE" > /dev/null; then
     BOX_STATUS=$BOX_STATUS_OUTDATED
   else
     BOX_STATUS=$BOX_STATUS_LATEST
@@ -160,7 +163,7 @@ function check-deb () {
 
   check-if-apt-cache-needs-update
 
-  if ! grep -E "^$PACKAGE$" < "$APT_INSTALL_CACHE" > /dev/null; then
+  if ! grep --line-regexp --fixed-strings "$PACKAGE" < "$APT_INSTALL_CACHE" > /dev/null; then
     BOX_STATUS=$BOX_STATUS_MISSING
   else
     BOX_STATUS=$BOX_STATUS_LATEST
@@ -217,7 +220,7 @@ function check-file-line () {
   [[ "$COMMENT" ]] && CHECK_LINE="$LINE # $COMMENT"
 
   if [[ -f "$FILE_PATH" ]]; then
-    if grep --fixed-strings "$CHECK_LINE" "$FILE_PATH" > /dev/null; then
+    if grep --line-regexp --fixed-strings "$FULL_LINE" "$FILE_PATH" > /dev/null; then
       BOX_STATUS=$BOX_STATUS_LATEST
     else
       BOX_STATUS=$BOX_STATUS_MISSING
