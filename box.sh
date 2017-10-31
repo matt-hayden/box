@@ -1,4 +1,5 @@
-#!/bin/bash
+#! /usr/bin/env bash
+: ${SUDO=sudo}
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -142,7 +143,7 @@ function satisfy-apt () {
   if [[ "$BOX_STATUS" = "$BOX_STATUS_LATEST" ]]; then
     BOX_ACTION=$BOX_ACTION_NONE
   else
-    sudo apt-get -y install "$PACKAGE"
+    $SUDO apt-get -y install "$PACKAGE"
     APT_CACHE_UP_TO_DATE="false"
 
     if [[ "$BOX_STATUS" = "$BOX_STATUS_OUTDATED" ]]; then
@@ -177,7 +178,7 @@ function satisfy-deb () {
     TEMP_DIR=$(mktemp --directory)
     cd "$TEMP_DIR"
     wget -O package.deb "$URL"
-    sudo dpkg -i package.deb
+    $SUDO dpkg -i package.deb
     cd "$OLDPWD"
     BOX_ACTION=$BOX_ACTION_INSTALL
   fi
@@ -201,8 +202,8 @@ function satisfy-apt-ppa () {
   if [[ "$BOX_STATUS" = "$BOX_STATUS_LATEST" ]]; then
     BOX_ACTION=$BOX_ACTION_NONE
   else
-    sudo add-apt-repository -y "$PPA"
-    sudo apt-get -y update
+    $SUDO add-apt-repository -y "$PPA"
+    $SUDO apt-get -y update
     APT_CACHE_UP_TO_DATE="false"
     BOX_ACTION=$BOX_ACTION_INSTALL
   fi
@@ -304,7 +305,7 @@ function satisfy-golang () {
     TEMP_DIR=$(mktemp --directory)
     cd "$TEMP_DIR"
     wget "https://storage.googleapis.com/golang/$VERSION.linux-amd64.tar.gz"
-    sudo tar -C /usr/local -xzf "$VERSION.linux-amd64.tar.gz"
+    $SUDO tar -C /usr/local -xzf "$VERSION.linux-amd64.tar.gz"
     cd "$OLDPWD"
     BOX_ACTION=$BOX_ACTION_INSTALL
   fi
