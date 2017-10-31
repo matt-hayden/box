@@ -213,10 +213,11 @@ function check-file-line () {
   local COMMENT=$1
   local FILE_PATH=$2
   local LINE=$3
-  local FULL_LINE="$LINE # $COMMENT"
+  local CHECK_LINE="$LINE"
+  [[ "$COMMENT" ]] && CHECK_LINE="$LINE # $COMMENT"
 
   if [[ -f "$FILE_PATH" ]]; then
-    if grep --fixed-strings "$FULL_LINE" "$FILE_PATH" > /dev/null; then
+    if grep --fixed-strings "$CHECK_LINE" "$FILE_PATH" > /dev/null; then
       BOX_STATUS=$BOX_STATUS_LATEST
     else
       BOX_STATUS=$BOX_STATUS_MISSING
@@ -230,12 +231,13 @@ function satisfy-file-line () {
   local COMMENT=$1
   local FILE_PATH=$2
   local LINE=$3
-  local FULL_LINE="$LINE # $COMMENT"
+  local ADD_LINE="$LINE"
+  [[ "$COMMENT" ]] && ADD_LINE="$LINE # $COMMENT"
 
   if [[ "$BOX_STATUS" = "$BOX_STATUS_LATEST" ]]; then
     BOX_ACTION=$BOX_ACTION_NONE
   else
-    echo "$FULL_LINE" >> "$FILE_PATH"
+    echo "$ADD_LINE" >> "$FILE_PATH"
     BOX_ACTION=$BOX_ACTION_INSTALL
   fi
 }
