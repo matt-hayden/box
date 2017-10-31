@@ -1,4 +1,6 @@
 #! /usr/bin/env bash
+: ${arch="$(dpkg-architecture -qDEB_HOST_ARCH)"}
+: ${release="$(lsb_release -sc)"}
 : ${SUDO=sudo}
 
 set -euo pipefail
@@ -131,9 +133,9 @@ function check-apt () {
 
   check-if-apt-cache-needs-update
 
-  if ! grep --line-regexp --fixed-strings "$PACKAGE" < "$APT_INSTALL_CACHE" > /dev/null; then
+  if ! grep -q --line-regexp --fixed-strings "$PACKAGE" < "$APT_INSTALL_CACHE"; then
     BOX_STATUS=$BOX_STATUS_MISSING
-  elif grep --line-regexp --fixed-strings "$PACKAGE" < "$APT_UPGRADE_CACHE" > /dev/null; then
+  elif grep -q --line-regexp --fixed-strings "$PACKAGE" < "$APT_UPGRADE_CACHE"; then
     BOX_STATUS=$BOX_STATUS_OUTDATED
   else
     BOX_STATUS=$BOX_STATUS_LATEST
@@ -163,7 +165,7 @@ function check-deb () {
 
   check-if-apt-cache-needs-update
 
-  if ! grep --line-regexp --fixed-strings "$PACKAGE" < "$APT_INSTALL_CACHE" > /dev/null; then
+  if ! grep -q --line-regexp --fixed-strings "$PACKAGE" < "$APT_INSTALL_CACHE"; then
     BOX_STATUS=$BOX_STATUS_MISSING
   else
     BOX_STATUS=$BOX_STATUS_LATEST
@@ -192,7 +194,7 @@ function check-apt-ppa () {
   local SEARCH
   SEARCH=${PPA/#ppa:/}
 
-  if apt-cache policy | grep "$SEARCH" > /dev/null; then
+  if apt-cache policy | grep -q "$SEARCH"; then
     BOX_STATUS=$BOX_STATUS_LATEST
   else
     BOX_STATUS=$BOX_STATUS_MISSING
@@ -220,7 +222,7 @@ function check-file-line () {
   [[ "$COMMENT" ]] && CHECK_LINE="$LINE # $COMMENT"
 
   if [[ -f "$FILE_PATH" ]]; then
-    if grep --line-regexp --fixed-strings "$FULL_LINE" "$FILE_PATH" > /dev/null; then
+    if grep -q --line-regexp --fixed-strings "$CHECK_LINE" "$FILE_PATH"; then
       BOX_STATUS=$BOX_STATUS_LATEST
     else
       BOX_STATUS=$BOX_STATUS_MISSING
@@ -284,7 +286,7 @@ function satisfy-symlink () {
 function check-golang () {
   local VERSION=$1
 
-  if [[ -f "/usr/local/go/bin/go" ]]; then
+  if type go &>/dev/null; then
     local CURRENT_VERSION
     CURRENT_VERSION=$(go version | cut -d ' ' -f 3)
 
@@ -300,6 +302,9 @@ function check-golang () {
 
 function satisfy-golang () {
   local VERSION=$1
+  local local_file
+  local local_dest="$HOME/.local"
+  [[ -w /usr/local ]] && local_dest=/usr/local
 
   if [[ "$BOX_STATUS" = "$BOX_STATUS_LATEST" ]]; then
     BOX_ACTION=$BOX_ACTION_NONE
@@ -309,8 +314,12 @@ function satisfy-golang () {
     local TEMP_DIR
     TEMP_DIR=$(mktemp --directory)
     cd "$TEMP_DIR"
-    wget "https://storage.googleapis.com/golang/$VERSION.linux-amd64.tar.gz"
-    $SUDO tar -C /usr/local -xzf "$VERSION.linux-amd64.tar.gz"
+    case $arch in
+      amd64) local_file="go${VERSION}.linux-amd64.tar.gz" ;;
+      i386|i686) local_file="go${VERSION}.linux-386.tar.gz" ;;
+    esac
+    wget "https://redirector.gvt1.com/edgedl/go/${local_file}"
+    tar -C "$local_dest" -axf "${local_file}"
     cd "$OLDPWD"
     BOX_ACTION=$BOX_ACTION_INSTALL
   fi
